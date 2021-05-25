@@ -3,7 +3,6 @@ import { useSession, getSession } from "next-auth/client";
 import moment from "moment";
 import db from "../../firebase";
 import Order from "../components/Order";
-import Stripe from "stripe";
 function Orders({orders}) {
   const [session] = useSession();
   //   console.log(orders);
@@ -42,7 +41,7 @@ function Orders({orders}) {
 export default Orders;
 export async function getServerSideProps(context) {
   // const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-  const stripe: Stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
   // get users login
   const session = await getSession(context);
 
