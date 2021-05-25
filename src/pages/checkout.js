@@ -5,11 +5,36 @@ import { selectItems, selectTotal } from "../slices/basketSlice";
 import CheckOutProduct from "../components/CheckOutProduct";
 import Currency from "react-currency-formatter";
 import { session, useSession } from "next-auth/client";
-
+import { loadStripe } from "@stripe/stripe-js";
+import axios from "axios";
 function checkout() {
   const items = useSelector(selectItems);
-  const [session] = useSession( )
-  const total = useSelector(selectTotal)
+  const [session] = useSession();
+  const total = useSelector(selectTotal);
+  const stripePromise = loadStripe(process.env.stripe_public_key);
+
+  const result = [
+    ...items
+      .reduce((mp, o) => {
+        if (!mp.has(o.id)) mp.set(o.id, { ...o, count: 0 });
+        mp.get(o.id).count++;
+        return mp;
+      }, new Map())
+      .values(),
+  ];
+  const createCheckoutSession = async () => {
+    const stripe = await stripePromise;
+    // call back end and create a checkout  session
+    const checkoutSession = await axios.post("/api/create-checkout-session", {
+      items: items,
+      email: session.user.email,
+    });
+    // redirect to stripe to checkout
+    const result = await stripe.redirectToCheckout({
+      sessionId: checkoutSession.data.id,
+    });
+    if (result.error) alert(result.error.message);
+  };
   return (
     <div className="bg-gray-100">
       <Header />
@@ -25,11 +50,11 @@ function checkout() {
 
           <div className="flex flex-col p-5 space-y-10 bg-white">
             <h1 className="text-3xl border-b m-4">
-              {items.length === 0
+              {result.length === 0
                 ? "Your Shopping Basket is empty"
                 : "Shoping Basket"}
             </h1>
-            {items.map((item, i) => (
+            {result.map((item, i) => (
               <CheckOutProduct
                 key={i}
                 id={item.id}
@@ -46,7 +71,7 @@ function checkout() {
         </div>
 
         {/* right */}
-        <div className='flex flex-col bg-white p-10'>
+        <div className="flex flex-col bg-white p-10">
           {items.length > 0 && (
             <>
               <h2 className="whitespace-nowrap">
@@ -56,8 +81,10 @@ function checkout() {
                 </span>
               </h2>
               <button
-              disabled={!session}
-                className={`${!session ? 'needSignin':'buttonClick'}`}
+                role="link"
+                onClick={createCheckoutSession}
+                disabled={!session}
+                className={`${!session ? "needSignin" : "buttonClick"}`}
               >
                 {!session ? "Sign in to checkout" : "Proceed to checkout"}
               </button>

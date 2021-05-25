@@ -8,8 +8,8 @@
 # testing
 /coverage
 
-/.history
-
+.history/
+/.history/
 # next.js
 /.next/
 /out/
